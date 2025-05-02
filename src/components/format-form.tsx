@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useActionState } from 'react'; // Keep useActionState from react
+import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom'; // Import useFormStatus from react-dom
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -35,7 +35,15 @@ const FormSchema = z.object({
 
 type FormData = z.infer<typeof FormSchema>;
 
-function SubmitButton() {
+function ResetButton({ reset }: { reset: () => void }) {
+  return (
+    <Button type="button" onClick={reset} className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+      Reset
+      </Button>
+  );
+}
+
+function SubmitButton({ children }: { children: React.ReactNode }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
@@ -44,10 +52,15 @@ function SubmitButton() {
   );
 }
 
+
 export function FormatForm() {
   const { toast } = useToast();
   const [formattedResult, setFormattedResult] = React.useState<string | null>(null);
 
+  const handleReset = () => {
+    form.reset();
+    setFormattedResult(null);
+  };
   const initialState: FormState = { message: null, error: null };
   const [state, formAction] = useActionState(formatAndForwardAction, initialState); // Updated usage
 
@@ -67,7 +80,6 @@ export function FormatForm() {
     }, {} as any) : {},
   });
 
-
   React.useEffect(() => {
     if (state?.message && !state.error) {
       toast({
@@ -77,43 +89,38 @@ export function FormatForm() {
       });
       if (state.formattedText) {
         setFormattedResult(state.formattedText);
+        form.resetField("text");
       }
-       // Optionally reset form on success
-       // form.reset();
     } else if (state?.error) {
-       toast({
+      toast({
         title: "Error",
         description: state.error || "An unknown error occurred.",
         variant: "destructive",
       });
       setFormattedResult(null); // Clear previous results on error
     }
-  }, [state, toast]);
+  }, [state, toast,form]);
 
-
-   // Manually trigger revalidation or set errors when server state changes
-   React.useEffect(() => {
+  // Manually trigger revalidation or set errors when server state changes
+  React.useEffect(() => {
     if (state?.fieldErrors) {
       const fieldErrors = state.fieldErrors;
       (Object.keys(fieldErrors) as Array<keyof FormData>).forEach((field) => {
         if (fieldErrors[field] && fieldErrors[field]!.length > 0) {
-            form.setError(field, { type: 'server', message: fieldErrors[field]![0]});
+          form.setError(field, { type: 'server', message: fieldErrors[field]![0] });
         }
       });
     } else {
-         // Clear server errors if state no longer has them
-         (Object.keys(form.formState.errors) as Array<keyof FormData>).forEach((field) => {
-            if (form.formState.errors[field]?.type === 'server') {
-                 form.clearErrors(field);
-            }
-         });
+      // Clear server errors if state no longer has them
+      (Object.keys(form.formState.errors) as Array<keyof FormData>).forEach((field) => {
+        if (form.formState.errors[field]?.type === 'server') {
+          form.clearErrors(field);
+        }
+      });
     }
   }, [state?.fieldErrors, form]);
 
-
-  return (
-    <Form {...form}>
-      <form action={formAction} className="space-y-6">
+  return (<Form {...form}><form action={formAction} className="space-y-6">
         <FormField
           control={form.control}
           name="text"
@@ -166,40 +173,32 @@ export function FormatForm() {
             </FormItem>
           )}
         />
-
-        <SubmitButton />
-
-       {/* Display Server Messages/Errors */}
-       {state?.message && !state.error && !formattedResult && (
-           <Alert>
-              <Terminal className="h-4 w-4" />
-              <AlertTitle>Heads up!</AlertTitle>
-              <AlertDescription>{state.message}</AlertDescription>
-           </Alert>
-       )}
+        {formattedResult && (<FormItem>
+          <FormLabel>Formatted Text</FormLabel>
+          <FormControl>
+            <Textarea value={formattedResult} disabled className="resize-y min-h-[150px] bg-input border border-border" />
+          </FormControl>
+        </FormItem>
+        )}
+        <div className="flex justify-between">
+          <SubmitButton>Format and Forward</SubmitButton>
+          {formattedResult && <ResetButton reset={handleReset} />}
+        </div>
+        {/* Display Server Messages/Errors */}
+        {state?.message && !state.error && !formattedResult && (
+          <Alert>
+            <Terminal className="h-4 w-4" />
+            <AlertTitle>Heads up!</AlertTitle>
+            <AlertDescription>{state.message}</AlertDescription>
+          </Alert>
+        )}
         {state?.error && (
           <Alert variant="destructive">
-             <Terminal className="h-4 w-4" />
-             <AlertTitle>Error</AlertTitle>
-             <AlertDescription>{state.error}</AlertDescription>
-           </Alert>
+            <Terminal className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{state.error}</AlertDescription>
+          </Alert>
         )}
-
-
-        {formattedResult && (
-          <Card className="mt-6 bg-secondary">
-            <CardHeader>
-              <CardTitle>Formatted Result</CardTitle>
-              <CardDescription>This is the text after AI processing.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <pre className="whitespace-pre-wrap p-4 bg-background rounded-md border text-sm text-foreground">
-                {formattedResult}
-              </pre>
-            </CardContent>
-          </Card>
-        )}
-      </form>
-    </Form>
+      </form></Form>
   );
 }

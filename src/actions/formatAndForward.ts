@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 import { formatText, type FormatTextInput, type FormatTextOutput } from '@/ai/flows/format-text';
+import { getAdminApp } from '@/lib/firebase-admin';
 import { getDb } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -51,6 +52,7 @@ export async function formatAndForwardAction(
     const formatOutput: FormatTextOutput = await formatText(formatInput);
     const formattedText = formatOutput.formattedText;
 
+
     // 3. Save to Firestore
     const db = getDb();
     if (!db) {
@@ -65,12 +67,20 @@ export async function formatAndForwardAction(
     });
     console.log('Document written with ID: ', docRef.id);
 
-    // 4. Simulate sending email (replace with actual email sending logic if needed)
-    console.log(`Simulating email sent to: ${email}`);
-    console.log(`Email Subject: Formatted Text`);
-    console.log(`Email Body:\n${formattedText}`);
-    // In a real app, you'd use a service like SendGrid, Mailgun, or Firebase Cloud Functions with an email extension.
-
+    // 4. Send email using Firebase Cloud Functions
+    const admin = getAdminApp();
+    try {
+      await admin.firestore().collection('mail').add({
+        to: email,
+        template: {
+          subject: 'Formatted Text',
+          text: formattedText,
+        },
+      });
+      console.log(`Email queued for sending to: ${email}`);
+    } catch (emailError) {
+      console.error('Error queuing email:', emailError);
+    }
     return {
       message: 'Text formatted, saved, and email simulated successfully!',
       formattedText: formattedText,
