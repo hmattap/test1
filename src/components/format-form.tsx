@@ -1,7 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react'; // Keep useActionState from react
+import { useFormStatus } from 'react-dom'; // Import useFormStatus from react-dom
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -48,7 +49,7 @@ export function FormatForm() {
   const [formattedResult, setFormattedResult] = React.useState<string | null>(null);
 
   const initialState: FormState = { message: null, error: null };
-  const [state, formAction] = useFormState(formatAndForwardAction, initialState);
+  const [state, formAction] = useActionState(formatAndForwardAction, initialState); // Updated usage
 
   const form = useForm<FormData>({
     resolver: zodResolver(FormSchema),
@@ -57,7 +58,7 @@ export function FormatForm() {
       formattingParameters: 'Ensure consistent capitalization and punctuation. Remove extra whitespace.',
       email: 'recipient@example.com', // Set default email in form
     },
-     // Use the state from useFormState to show server-side errors
+     // Use the state from useActionState to show server-side errors
     errors: state?.fieldErrors ? Object.entries(state.fieldErrors).reduce((acc, [key, value]) => {
       if (value && value.length > 0) {
         acc[key as keyof FormData] = { type: 'server', message: value[0] };
