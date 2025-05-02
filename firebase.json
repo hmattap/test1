@@ -1,0 +1,42 @@
+{
+  "hosting": {
+    // "site": "<your_firebase_hosting_site_id>", // Optional: specify if you have multiple sites
+    "public": ".next", // Serve static assets from the Next.js build output directory
+    "ignore": [
+      "firebase.json",
+      "**/.*", // Ignore hidden files like .git, .vscode
+      "**/node_modules/**" // Ignore node_modules
+    ],
+    // This section enables Firebase Hosting's integration with Cloud Run for Next.js apps.
+    // It automatically handles rewrites and serves your dynamic Next.js content.
+    "frameworksBackend": {
+        // Replace 'us-central1' with the region where your Cloud Run service is deployed.
+        "region": "us-central1",
+        // Replace 'format-forward-app' with the desired ID for your Cloud Run service.
+        // Firebase CLI will typically prompt to create this service if it doesn't exist during deployment.
+        "serviceId": "format-forward-app",
+        // Optional: Pin to a specific Cloud Run revision
+        // "pinTag": "my-production-tag"
+        // Optional: Set environment variables for the Cloud Run service
+        // "env": [
+        //   { "key": "GOOGLE_GENAI_API_KEY", "value": "YOUR_API_KEY_HERE" }
+        //   // Add other necessary environment variables here
+        //   // IMPORTANT: For secrets like API keys, prefer using Secret Manager:
+        //   // { "key": "GOOGLE_GENAI_API_KEY", "secret": "YOUR_SECRET_NAME" }
+        // ]
+    }
+    // If you were deploying to Cloud Functions instead of Cloud Run, you would remove
+    // the "frameworksBackend" section and use "rewrites" like this:
+    // "rewrites": [
+    //   {
+    //     "source": "**",
+    //     "function": "nextAppServer" // Replace 'nextAppServer' with your function name
+    //   }
+    // ]
+  }
+  // If you have Cloud Functions defined in your project (e.g., in a 'functions' folder),
+  // configure them here:
+  // "functions": {
+  //   "source": "functions" // Directory containing function code
+  // }
+}
