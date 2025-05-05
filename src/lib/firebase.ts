@@ -21,7 +21,10 @@ let db: Firestore | null = null;
  */
 function initializeFirebaseClient(): void {
   // Check if running in a browser environment
+  console.log("initializing firebase client");
+  console.log("typeof window:", typeof window);
   if (typeof window !== 'undefined') {
+    console.log("getApps().length:", getApps().length);
     // Initialize only if no Firebase apps have been initialized yet
     if (!getApps().length) {
       try {
@@ -36,6 +39,7 @@ function initializeFirebaseClient(): void {
       }
     } else {
       // If already initialized, get the default app instance
+      console.log("firebase already initialized");
       app = getApp();
       db = getFirestore(app);
     }
@@ -53,7 +57,9 @@ initializeFirebaseClient();
  */
 const getDb = (): Firestore | null => {
   // Return the cached db instance if available.
+  console.log("getDb() called");
   if (db) {
+    console.log("db:", db);
     return db;
   }
 
@@ -64,6 +70,7 @@ const getDb = (): Firestore | null => {
      initializeFirebaseClient();
      // Return the potentially (re)initialized db instance.
      // It might still be null if initialization failed.
+     console.log("db:", db);
      return db;
   }
 
