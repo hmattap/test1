@@ -1,5 +1,6 @@
 'use client';
-import { getDb, useFirebase } from '@/lib/firebase';
+import { getDb } from '@/lib/firebase';
+import { useFirebase } from '@/hooks/useFirebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
