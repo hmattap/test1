@@ -10,6 +10,7 @@ function initializeFirebaseClient(): void {
   console.log("initializing firebase client");
   console.log("typeof window:", typeof window);
   if (typeof window !== 'undefined') {
+    console.log("getApps().length:", getApps().length);
     console.log(getApps().length);
     if (!getApps().length) {
       try {

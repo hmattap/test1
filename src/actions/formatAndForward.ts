@@ -3,8 +3,7 @@
 import { z } from 'zod';
 import { formatText, type FormatTextInput, type FormatTextOutput } from '@/ai/flows/format-text';
 import { getAdminApp } from '@/lib/firebase-admin';
-import { getDb } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore'; // Correct imports
 
 // Define the schema for the form input
 const FormSchema = z.object({
@@ -53,24 +52,21 @@ export async function formatAndForwardAction(
     const formattedText = formatOutput.formattedText;
 
 
-    // 3. Save to Firestore
-    const db = getDb();
-    if (!db) {
-      throw new Error('Firestore database is not initialized.');
-    }
-    const docRef = await addDoc(collection(db, 'formattedTexts'), {
+    // 3. Save to Firestore (using Admin SDK)
+    const adminApp = getAdminApp(); // Get the initialized Admin app
+    const db = getFirestore(adminApp); // Get the admin firestore
+    await db.collection('formattedTexts').add({ // Use db.collection() and db.add() for Admin SDK
       originalText: text,
       formattingParameters: formattingParameters,
       formattedText: formattedText,
       recipientEmail: email,
-      createdAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(), // Correct usage
     });
-    console.log('Document written with ID: ', docRef.id);
+    
 
     // 4. Send email using Firebase Cloud Functions
-    const admin = getAdminApp();
     try {
-      await admin.firestore().collection('mail').add({
+      await db.collection('mail').add({ // Use the Admin db to interact with Firestore in mail collection
         to: email,
         template: {
           subject: 'Formatted Text',
