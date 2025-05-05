@@ -1,5 +1,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore } from "firebase/firestore";
+//import firebaseConfig from "../../firebase.config";
+import { useEffect, useState } from "react";
 
 // IMPORTANT: Replace with your actual Firebase config values
 // These should ideally be stored in environment variables
@@ -23,32 +25,34 @@ function initializeFirebaseClient(): void {
   // Check if running in a browser environment
   console.log("initializing firebase client");
   console.log("typeof window:", typeof window);
+  // Check if running in a browser environment
   if (typeof window !== 'undefined') {
-    console.log("getApps().length:", getApps().length);
-    // Initialize only if no Firebase apps have been initialized yet
-    if (!getApps().length) {
-      try {
-        app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        console.log("Firebase initialized on client");
-      } catch (error) {
-        console.error("Firebase client initialization error:", error);
-        // Reset app and db refs if initialization fails
-        app = null;
-        db = null;
-      }
-    } else {
+      console.log("getApps().length:", getApps().length);
+      // Initialize only if no Firebase apps have been initialized yet
+      if (!getApps().length) {
+          try {
+              app = initializeApp(firebaseConfig);
+              db = getFirestore(app);
+              console.log("Firebase initialized on client");
+          } catch (error) {
+              console.error("Firebase client initialization error:", error);
+              console.log("Firebase client initialization error: app and db will be set to null");
+              // Reset app and db refs if initialization fails
+              app = null;
+              db = null;
+          }
+      } else {
+          console.log("firebase already initialized");
       // If already initialized, get the default app instance
-      console.log("firebase already initialized");
-      app = getApp();
-      db = getFirestore(app);
-    }
+          app = getApp();
+          db = getFirestore(app);
+      }
   }
 }
 
 // Attempt to initialize Firebase on module load for client-side environments.
 // This ensures Firebase is ready when components/hooks needing it are mounted.
-initializeFirebaseClient();
+//initializeFirebaseClient();
 
 /**
  * Gets the initialized Firestore instance.
@@ -66,13 +70,13 @@ const getDb = (): Firestore | null => {
   // If running on the client and db is somehow not initialized yet
   // (e.g., module load timing issues), attempt to initialize again.
   // This serves as a fallback, but the initial call should ideally suffice.
-  if (typeof window !== 'undefined') {
+  /*if (typeof window !== 'undefined') {
      initializeFirebaseClient();
      // Return the potentially (re)initialized db instance.
      // It might still be null if initialization failed.
      console.log("db:", db);
      return db;
-  }
+  }*/
 
   // If running on the server or initialization failed, log a warning and return null.
   // Server Actions running in Node.js context cannot use the client SDK directly like this.
@@ -81,7 +85,18 @@ const getDb = (): Firestore | null => {
   return null;
 };
 
-export { getDb };
+//export { getDb };
+
+const useFirebase = () => {
+  const [isFirebaseInitialized, setIsFirebaseInitialized] = useState(false)
+  useEffect(() => {
+      initializeFirebaseClient();
+      setIsFirebaseInitialized(true)
+  }, [])
+  return {isFirebaseInitialized}
+}
+
+export { getDb, useFirebase };
 
 
 // Example for initializing Admin SDK (commented out, not currently used):
