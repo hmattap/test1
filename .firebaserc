@@ -1,6 +1,5 @@
 {
   "projects": {
-    // Replace <YOUR_FIREBASE_PROJECT_ID> with your actual Firebase project ID
-    "default": "<YOUR_FIREBASE_PROJECT_ID>"
+    "default": "format-forward"
   }
 }
