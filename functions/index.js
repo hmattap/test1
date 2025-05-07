@@ -33,7 +33,11 @@ const sendMailFunction = async (snap, context) => {
 };
 
 exports.sendMail = functions.firestore
-    .document("mail/{mailId}").onCreate(sendMailFunction);
+    .document("mail/{mailId}")
+    .onCreate((snap, context) => {
+    // Your function code here
+      return sendMailFunction(snap, context);
+    });
 
 /* const functions = require("firebase-functions");
 const admin = require("firebase-admin");
