@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom'; // Import useFormStatus from react-dom
+import { useFormStatus } from 'react-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -19,7 +19,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatAndForwardAction, type FormState } from '@/actions/formatAndForward';
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -30,23 +29,23 @@ import { Terminal } from 'lucide-react';
 const FormSchema = z.object({
   text: z.string().min(1, { message: 'Text cannot be empty.' }),
   formattingParameters: z.string().min(1, { message: 'Formatting parameters cannot be empty.' }).default("Ensure consistent capitalization and punctuation. Remove extra whitespace."),
-  email: z.string().email({ message: 'Please enter a valid email address.' }).default("recipient@example.com"), // Add default email
+  email: z.string().email({ message: 'Please enter a valid email address.' }).default("recipient@example.com"),
 });
 
 type FormData = z.infer<typeof FormSchema>;
 
 function ResetButton({ reset }: { reset: () => void }) {
   return (
-    <Button type="button" onClick={reset} className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+    <Button type="button" onClick={reset} variant="outline" className="w-full">
       Reset
       </Button>
   );
 }
 
-function SubmitButton({ children }: { children: React.ReactNode }) {
+function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
+    <Button type="submit" disabled={pending} className="w-full">
       {pending ? 'Processing...' : 'Format and Forward'}
     </Button>
   );
@@ -57,28 +56,24 @@ export function FormatForm() {
   const { toast } = useToast();
   const [formattedResult, setFormattedResult] = React.useState<string | null>(null);
 
-  const handleReset = () => {
-    form.reset();
-    setFormattedResult(null);
-  };
-  const initialState: FormState = { message: null, error: null };
-  const [state, formAction] = useActionState(formatAndForwardAction, initialState); // Updated usage
+  const initialState: FormState = { message: null, error: null, fieldErrors: {} };
+  const [state, formAction] = useActionState(formatAndForwardAction, initialState);
 
   const form = useForm<FormData>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
       text: '',
       formattingParameters: 'Ensure consistent capitalization and punctuation. Remove extra whitespace.',
-      email: 'recipient@example.com', // Set default email in form
+      email: 'recipient@example.com',
     },
-     // Use the state from useActionState to show server-side errors
-    errors: state?.fieldErrors ? Object.entries(state.fieldErrors).reduce((acc, [key, value]) => {
-      if (value && value.length > 0) {
-        acc[key as keyof FormData] = { type: 'server', message: value[0] };
-      }
-      return acc;
-    }, {} as any) : {},
+    // Remove `errors` from here; server errors will be handled by useEffect
   });
+
+  const handleReset = () => {
+    form.reset();
+    setFormattedResult(null);
+    // Optionally, reset the action state if a mechanism exists or is needed
+  };
 
   React.useEffect(() => {
     if (state?.message && !state.error) {
@@ -89,7 +84,7 @@ export function FormatForm() {
       });
       if (state.formattedText) {
         setFormattedResult(state.formattedText);
-        form.resetField("text");
+        form.resetField("text"); // form.resetField is stable
       }
     } else if (state?.error) {
       toast({
@@ -97,28 +92,35 @@ export function FormatForm() {
         description: state.error || "An unknown error occurred.",
         variant: "destructive",
       });
-      setFormattedResult(null); // Clear previous results on error
+      setFormattedResult(null);
     }
-  }, [state, toast,form]);
+  }, [state?.message, state?.error, state?.formattedText, toast, form.resetField]);
 
-  // Manually trigger revalidation or set errors when server state changes
+
   React.useEffect(() => {
+    // Clear previous server-set errors first.
+    // Iterate over the fields defined in the schema to avoid issues with unrelated errors.
+    const schemaFields = Object.keys(FormSchema.shape) as Array<keyof FormData>;
+    schemaFields.forEach(fieldName => {
+      if (form.formState.errors[fieldName]?.type === 'server') {
+        form.clearErrors(fieldName);
+      }
+    });
+
+    // Set new server-set errors
     if (state?.fieldErrors) {
       const fieldErrors = state.fieldErrors;
-      (Object.keys(fieldErrors) as Array<keyof FormData>).forEach((field) => {
-        if (fieldErrors[field] && fieldErrors[field]!.length > 0) {
-          form.setError(field, { type: 'server', message: fieldErrors[field]![0] });
-        }
-      });
-    } else {
-      // Clear server errors if state no longer has them
-      (Object.keys(form.formState.errors) as Array<keyof FormData>).forEach((field) => {
-        if (form.formState.errors[field]?.type === 'server') {
-          form.clearErrors(field);
+      (Object.keys(fieldErrors) as Array<keyof FormData>).forEach(fieldName => {
+        const messages = fieldErrors[fieldName];
+        if (messages && messages.length > 0) {
+          form.setError(fieldName, {
+            type: 'server',
+            message: messages[0],
+          });
         }
       });
     }
-  }, [state?.fieldErrors, form]);
+  }, [state?.fieldErrors, form.setError, form.clearErrors, form.formState.errors]); // form.setError and form.clearErrors are stable. form.formState.errors is added to re-evaluate clearing.
 
   return (<Form {...form}><form action={formAction} className="space-y-6">
         <FormField
@@ -167,32 +169,32 @@ export function FormatForm() {
                 <Input type="email" placeholder="recipient@example.com" {...field} className="bg-input border border-border" />
               </FormControl>
               <FormDescription>
-                The email address to send the formatted text to (simulation).
+                The email address to send the formatted text to.
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
         {formattedResult && (<FormItem>
-          <FormLabel>Formatted Text</FormLabel>
+          <FormLabel>Formatted Text Result</FormLabel>
           <FormControl>
-            <Textarea value={formattedResult} disabled className="resize-y min-h-[150px] bg-input border border-border" />
+            <Textarea value={formattedResult} readOnly className="resize-y min-h-[150px] bg-muted border border-border" />
           </FormControl>
         </FormItem>
         )}
-        <div className="flex justify-between">
-          <SubmitButton>Format and Forward</SubmitButton>
-          {formattedResult && <ResetButton reset={handleReset} />}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <SubmitButton />
+          <ResetButton reset={handleReset} />
         </div>
-        {/* Display Server Messages/Errors */}
-        {state?.message && !state.error && !formattedResult && (
+        {/* Display Server Action General Messages (not field errors) */}
+        {state?.message && !state.error && !state.fieldErrors && Object.keys(state.fieldErrors).length === 0 && !formattedResult && (
           <Alert>
             <Terminal className="h-4 w-4" />
             <AlertTitle>Heads up!</AlertTitle>
             <AlertDescription>{state.message}</AlertDescription>
           </Alert>
         )}
-        {state?.error && (
+        {state?.error && !state.fieldErrors && Object.keys(state.fieldErrors).length === 0 && (
           <Alert variant="destructive">
             <Terminal className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
