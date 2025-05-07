@@ -76,25 +76,29 @@ export function FormatForm() {
   };
 
   React.useEffect(() => {
-    if (state?.message && !state.error) {
-      toast({
-        title: "Success!",
-        description: state.message,
-        variant: "default",
-      });
-      if (state.formattedText) {
-        setFormattedResult(state.formattedText);
-        form.resetField("text"); // form.resetField is stable
+    // Clear previous server-set errors first.
+    // Iterate over the fields defined in the schema to avoid issues with unrelated errors.
+    const schemaFields = Object.keys(FormSchema.shape) as Array<keyof FormData>;
+    schemaFields.forEach(fieldName => {
+      if (form.formState.errors[fieldName]?.type === "server") {
+        form.clearErrors(fieldName);
       }
-    } else if (state?.error) {
-      toast({
-        title: "Error",
-        description: state.error || "An unknown error occurred.",
-        variant: "destructive",
+    });
+
+    // Set new server-set errors
+    if (state?.fieldErrors && typeof state.fieldErrors === 'object') { // Added check here
+      const fieldErrors = state.fieldErrors;
+      (Object.keys(fieldErrors) as Array<keyof FormData>).forEach(fieldName => {
+        const messages = fieldErrors[fieldName];
+        if (messages && messages.length > 0) {
+          form.setError(fieldName, {
+            type: "server",
+            message: messages[0],
+          });
+        }
       });
-      setFormattedResult(null);
     }
-  }, [state?.message, state?.error, state?.formattedText, toast, form.resetField]);
+  }, [state?.fieldErrors, form.setError, form.clearErrors, form.formState.errors]); // form.setError and form.clearErrors are stable. form.formState.errors is added to re-evaluate clearing.
 
 
   React.useEffect(() => {
@@ -185,22 +189,21 @@ export function FormatForm() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SubmitButton />
           <ResetButton reset={handleReset} />
-        </div>
-        {/* Display Server Action General Messages (not field errors) */}
-        {state?.message && !state.error && !state.fieldErrors && Object.keys(state.fieldErrors).length === 0 && !formattedResult && (
+        </div>{/* Display Server Action General Messages (not field errors) */}
+        {state?.message && !state.error && state?.fieldErrors && typeof state.fieldErrors === 'object' && Object.keys(state.fieldErrors).length === 0 && !formattedResult && ( 
           <Alert>
             <Terminal className="h-4 w-4" />
             <AlertTitle>Heads up!</AlertTitle>
             <AlertDescription>{state.message}</AlertDescription>
           </Alert>
-        )}
-        {state?.error && !state.fieldErrors && Object.keys(state.fieldErrors).length === 0 && (
-          <Alert variant="destructive">
-            <Terminal className="h-4 w-4" />
+        )}{state?.error && state?.fieldErrors && typeof state.fieldErrors === 'object' && Object.keys(state.fieldErrors).length === 0 && ( 
+          <Alert variant="destructive">\
+            <Terminal className="h-4 w-4\" />\
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{state.error}</AlertDescription>
           </Alert>
         )}
+
       </form></Form>
   );
 }
